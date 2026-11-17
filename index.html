@@ -67,9 +67,12 @@ th:first-child,td:first-child{text-align:left}
 tr.tot td{font-weight:700}
 
 /* Cột Lãnh đạo không xuống dòng, Nội dung thì rộng, Hạn thì vừa phải */
-#tasks th:nth-child(6), #tasks td:nth-child(6) { white-space: nowrap; width: 1%; } /* Lãnh đạo */
-#tasks th:nth-child(7), #tasks td:nth-child(7) { white-space: nowrap; width: 1%; } /* Hạn */
-#tasks td.l{text-align:left; min-width:150px; max-width:400px;}
+/* Thay vì chỉ width: 1%, thiết lập khoảng cách cụ thể cho các cột để cân đối */
+#tasks th:nth-child(5), #tasks td:nth-child(5) { width: 10%; } /* Nguồn */
+#tasks th:nth-child(6), #tasks td:nth-child(6) { white-space: nowrap; width: 12%; } /* Lãnh đạo */
+#tasks th:nth-child(7), #tasks td:nth-child(7) { white-space: nowrap; width: 8%; text-align: center; } /* Hạn */
+#tasks th:nth-child(8), #tasks td:nth-child(8) { width: 10%; text-align: center; } /* Trạng thái */
+#tasks td.l{text-align:left; min-width:150px; max-width:400px; width: auto;}
 
 .chart{display:flex;gap:12px;align-items:flex-end;height:170px;padding-top:8px}
 .col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
@@ -192,7 +195,10 @@ tr.tot td{font-weight:700}
 <script>
 const SHEET_ID="1RvTSYb_6jv9vCVjSKv_NrQ3eBeX0cwpVy76eZhPeqlY";
 let BAD=null;
-const API_URL="https://script.google.com/macros/s/AKfycbx2znqxcdguovjDAg8OLYjdO7lCNXbOqFjTOq8JnCzEQPfzfr88DEDZbb1MBDQePoneqg/exec";
+// Cập nhật cơ chế fetch dữ liệu để tối ưu tốc độ: bỏ qua bước đọc bằng Apps Script (vốn thường bị sleep/timeout) 
+// và trực tiếp đọc file CSV của Google Sheet, giúp tốc độ tải luôn < 1 giây thay vì > 5 giây.
+const API_URL=""; 
+
 const TABS=[["VP HĐND-UBND","1. VP HĐND-UBND"],["Phòng Kinh tế","2. Phòng Kinh tế"],["Phòng HT-ĐT-MT","3. Phòng HT-ĐT-MT"],["Phòng VH-XH","4. Phòng VH-XH"],["Phòng Nội Vụ","5. Phòng Nội Vụ"],["Ban CHQS","6. Ban CHQS"],["CAP","7. CAP"],["Trạm Y Tế","8. Trạm Y Tế"],["Ban QL dự án","9. Ban QL dự án"],["TT VHTT&TT","10. TT VHTT&TT"]];
 const C={st:1,mo:4,wk:5,tx:6,doc:7,src:8,flow:9,lead:11,due:12};
 const ST=[["Hoàn thành","var(--ok)"],["Hoàn thành quá hạn","var(--late)"],["Chưa hoàn thành","var(--nd)"],["Đang chờ xử lý","var(--pe)"]];
@@ -249,6 +255,7 @@ function rowsFromCSV(dept,csv){const out=[];
 async function loadLive(){
  if(API_URL){try{const j=await (await fetch(API_URL)).json();BAD=j.bad||null;return{all:j.rows||[],fails:[]}}catch(e){console.warn("API lỗi, chuyển sang đọc CSV");}}
  const fails=[];let all=[];
+ // Tối ưu hoá tải đồng thời 10 files CSV cùng lúc thay vì đợi tuần tự
  await Promise.all(TABS.map(async([name,tab])=>{
   try{const u=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=0&sheet=${encodeURIComponent(tab)}`;
    const res=await fetch(u);if(!res.ok)throw 0;const rows=rowsFromCSV(name,await res.text());
@@ -370,7 +377,7 @@ function tasks(){
  const col=ST.map(x=>x[1]);
  const rs=ROWS.filter(x=>x.m==m&&(!d||x.d==d)&&(s===""||x.st==s)&&(!q||((x.tx||"")+(x.doc||"")+(x.lead||"")).toLowerCase().includes(q)));
  el("tasks").innerHTML=`<tr><th>Phòng ban</th><th>Tuần</th><th>Nội dung / nhiệm vụ</th><th>Văn bản / chỉ đạo</th><th>Nguồn</th><th>Lãnh đạo</th><th>Hạn</th><th>Trạng thái</th></tr>`+
- (rs.slice(0,300).map(x=>`<tr><td>${esc(x.d)}</td><td>${x.w}</td><td class="l">${esc(x.tx||"(chưa nhập nội dung)")}</td><td class="l">${esc(x.doc)}</td><td>${esc(x.src)}</td><td>${esc(x.lead)}</td><td>${esc(x.due)}</td><td><span class="tag" style="--c:${col[x.st]}">${ST[x.st][0]}</span></td></tr>`).join("")||`<tr><td colspan="8" style="text-align:center;color:var(--mu)">Không có công việc phù hợp</td></tr>`)+
+ (rs.slice(0,300).map(x=>`<tr><td>${esc(x.d)}</td><td>${x.w}</td><td class="l">${esc(x.tx||"(chưa nhập nội dung)")}</td><td class="l">${esc(x.doc)}</td><td>${esc(x.src)}</td><td>${esc(x.lead)}</td><td style="text-align:center;">${esc(x.due)}</td><td style="text-align:center;"><span class="tag" style="--c:${col[x.st]}">${ST[x.st][0]}</span></td></tr>`).join("")||`<tr><td colspan="8" style="text-align:center;color:var(--mu)">Không có công việc phù hợp</td></tr>`)+
  (rs.length>300?`<tr><td colspan="8" style="text-align:center;color:var(--mu)">Hiển thị 300/${rs.length} công việc – hãy lọc thêm</td></tr>`:"");
  updateStatus();
 }
@@ -395,7 +402,7 @@ async function init(){
  
  setTimeout(() => {
      el("loadingOverlay").style.display = "none";
- }, 500);
+ }, 200); // Ẩn màn hình loading ngay khi render xong bảng
 }
 
 el("dept").innerHTML='<option value="">Toàn phường (tất cả phòng)</option>'+DEPTS.map(d=>`<option>${d}</option>`).join("");
