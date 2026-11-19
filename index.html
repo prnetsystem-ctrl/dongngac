@@ -267,6 +267,7 @@ const el=id=>document.getElementById(id);
 const sum=a=>a.reduce((x,y)=>x+y,0);
 const pct=(a,b)=>b?(a/b*100).toFixed(1).replace(".",",")+"%":"0,0%";
 const esc=s=>String(s??"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const getCurrentWeekOfMonth=()=>{const d=new Date();return Math.min(5,Math.ceil(d.getDate()/7))};
 
 function updateStatus() {
     const d = el("dept").value;
@@ -283,6 +284,9 @@ function updateStatus() {
         text = `Đang xem: <b>${deptName}</b> · trong <b>tháng ${m}</b> · Cập nhật lúc: ${timeStr}`;
     } else if (tabCode === 'lk') {
         text = `Đang xem: <b>${deptName}</b> · luỹ kế tới <b>tháng ${m}</b> · Cập nhật lúc: ${timeStr}`;
+    } else if (tabCode === 'rp') {
+        const w = el("week").value || getCurrentWeekOfMonth();
+        text = `Đang xem: Báo cáo công việc <b>Tuần ${w}</b> của UBND Phường được tự động tạo ra - Cập nhật lúc: ${timeStr}`;
     } else {
         const tabName = tabBtn ? tabBtn.innerText : '';
         text = `Đang xem: <b>${deptName}</b> · ${tabName} · Cập nhật lúc: ${timeStr}`;
@@ -452,6 +456,8 @@ async function init(){
  
  const currentMonth = new Date().getMonth() + 1;
  el("month").value = currentMonth;
+ el("week").dataset.u = "";
+ el("week").value = getCurrentWeekOfMonth();
  render();
  
  setTimeout(() => {
@@ -477,7 +483,10 @@ function calc(d,m,w){const a=ROWS.filter(x=>x.d==d&&x.m==m&&x.w<=w),o=ROWS.filte
 
 function repW(){
  const m=+el("month").value,ws=el("week");
- if(ws.dataset.u!="1")ws.value=Math.max(1,...ROWS.filter(x=>x.m==m).map(x=>x.w));
+ const realMonth = new Date().getMonth() + 1;
+ if(ws.dataset.u!="1"){
+   ws.value = (m === realMonth) ? getCurrentWeekOfMonth() : Math.max(1,...ROWS.filter(x=>x.m==m).map(x=>x.w));
+ }
  const w=+ws.value,C=DEPTS.map(d=>({d,...calc(d,m,w)})),T={n:0,o:0,t:0,hd:0,nd:0,pe:0,nw:0};
  C.forEach(c=>{for(const k in T)T[k]+=c[k]});
  const L=c=>`<p class="ind">+ Đã hoàn thành: ${c.hd} nhiệm vụ (đạt tỷ lệ ${pct(c.hd,c.t)})</p><p class="ind">+ Chưa hoàn thành (quá hạn chưa giải quyết): ${c.nd} nhiệm vụ</p><p class="ind">+ Đang tiếp tục xử lý (trong hạn): ${c.pe} nhiệm vụ</p>`;
