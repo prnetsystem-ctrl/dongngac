@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Theo dõi công việc – UBND Phường Đông Ngạc 2026</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f4f6fa;--card:#fff;--tx:#1d2433;--mu:#667085;--bd:#e3e8ef;--pr:#1e4fa3;--ok:#2e9e5b;--late:#e08a00;--nd:#d6453d;--pe:#7a8599}
 @media (prefers-color-scheme:dark){:root{--bg:#12161f;--card:#1b2130;--tx:#e8ecf4;--mu:#97a1b5;--bd:#2c3446;--pr:#6f9bf0}}
@@ -17,6 +18,10 @@ header h1{margin:0;font-size:18px}header p{margin:2px 0 0;opacity:.85;font-size:
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 20px;background:var(--card);border-bottom:1px solid var(--bd); position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.05);}
 select,input,button{padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);font:inherit}
 button{cursor:pointer}
+.btn-ok{background:var(--ok);color:#fff;border-color:var(--ok);font-weight:600}
+.btn-ok:hover{filter:brightness(1.06)}
+.btn-pr{background:var(--pr);color:#fff;border-color:var(--pr);font-weight:600}
+.btn-pr:hover{filter:brightness(1.08)}
 .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
 .tabs button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 
@@ -73,6 +78,21 @@ tr.tot td{font-weight:700}
 #tasks th:nth-child(8), #tasks td:nth-child(8) { width: 10%; text-align: center; } /* Trạng thái */
 #tasks td.l{text-align:left; min-width:150px; max-width:400px; width: auto;}
 
+/* Căn chỉnh bảng cân đối trong tab Cần xử lý (9 cột) */
+.xl-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+.xl-tbl th, .xl-tbl td { padding: 8px 8px; border-bottom: 1px solid var(--bd); vertical-align: top; line-height: 1.45; overflow-wrap: break-word; word-break: break-word; }
+.xl-tbl th { background: var(--bg); color: var(--mu); font-weight: 600; vertical-align: middle; }
+.xl-tbl th:nth-child(1), .xl-tbl td:nth-child(1) { width: 11%; text-align: left; }
+.xl-tbl th:nth-child(2), .xl-tbl td:nth-child(2) { width: 8%; text-align: center; white-space: nowrap; }
+.xl-tbl th:nth-child(3), .xl-tbl td:nth-child(3) { width: 26%; text-align: left; }
+.xl-tbl th:nth-child(4), .xl-tbl td:nth-child(4) { width: 15%; text-align: left; }
+.xl-tbl th:nth-child(5), .xl-tbl td:nth-child(5) { width: 10%; text-align: left; white-space: nowrap; }
+.xl-tbl th:nth-child(6), .xl-tbl td:nth-child(6) { width: 8%; text-align: center; white-space: nowrap; }
+.xl-tbl th:nth-child(7), .xl-tbl td:nth-child(7) { width: 11%; text-align: left; }
+.xl-tbl th:nth-child(8), .xl-tbl td:nth-child(8) { width: 7%; text-align: left; }
+.xl-tbl th:nth-child(9), .xl-tbl td:nth-child(9) { width: 4%; text-align: center; white-space: nowrap; }
+.xl-print-head { display: none; }
+
 .chart{display:flex;gap:12px;align-items:flex-end;height:170px;padding-top:8px}
 .col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
 .stack{width:100%;max-width:56px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden}
@@ -98,10 +118,14 @@ tr.tot td{font-weight:700}
 .status-bar span.dot {color:#ff9800; font-size:16px; margin-right:8px; line-height:1;}
 .chart-container { position: relative; height: 300px; width: 100%; }
 
-/* Chuẩn hoá định dạng in A4 theo Nghị định 30/2020/NĐ-CP */
+/* Chuẩn hoá định dạng in A4 theo Nghị định 30/2020/NĐ-CP và in bảng Cần xử lý */
 @page {
   size: A4 portrait;
   margin: 20mm 15mm 20mm 30mm;
+}
+@page xlpage {
+  size: A4 landscape;
+  margin: 12mm;
 }
 @media print {
   html, body {
@@ -111,9 +135,7 @@ tr.tot td{font-weight:700}
     padding: 0 !important;
     width: 100% !important;
   }
-  header, .bar, #loadingOverlay, #msg, #statusBar,
-  main > section:not(#rp),
-  #rp > .card {
+  header, .bar, #loadingOverlay, #msg, #statusBar, .no-print {
     display: none !important;
   }
   main {
@@ -123,10 +145,16 @@ tr.tot td{font-weight:700}
     min-height: 0 !important;
     position: static !important;
   }
-  #rp {
+
+  /* Chế độ in mặc định: Báo cáo tuần tự động */
+  body:not(.print-xl) main > section:not(#rp),
+  body:not(.print-xl) #rp > .card {
+    display: none !important;
+  }
+  body:not(.print-xl) #rp {
     display: block !important;
   }
-  #rpt {
+  body:not(.print-xl) #rpt {
     display: block !important;
     position: static !important;
     border: none !important;
@@ -142,18 +170,88 @@ tr.tot td{font-weight:700}
     font-size: 13.5pt !important;
     line-height: 1.45 !important;
   }
-  #rpt .hd, #rpt .sg {
+  body:not(.print-xl) #rpt .hd, body:not(.print-xl) #rpt .sg {
     display: flex !important;
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  #rpt .dept-blk {
+  body:not(.print-xl) #rpt .dept-blk {
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  #rpt p {
+  body:not(.print-xl) #rpt p {
     orphans: 3;
     widows: 3;
+  }
+
+  /* Chế độ in tab Cần xử lý (A4 ngang) */
+  body.print-xl main > section:not(#xl) {
+    display: none !important;
+  }
+  body.print-xl #xl {
+    display: block !important;
+    page: xlpage;
+  }
+  body.print-xl .xl-print-head {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 12px;
+    font-family: "Times New Roman", Times, serif;
+  }
+  body.print-xl .xl-print-head h2 {
+    margin: 0 0 4px;
+    font-size: 15pt;
+    text-transform: uppercase;
+  }
+  body.print-xl .xl-print-head p {
+    margin: 0;
+    font-size: 11pt;
+    font-style: italic;
+  }
+  body.print-xl #xl .card {
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 0 14px !important;
+    background: #fff !important;
+  }
+  body.print-xl #xl .card h3 {
+    font-size: 11.5pt !important;
+    color: #000 !important;
+    margin: 8px 0 6px !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  body.print-xl #xl .sc {
+    overflow: visible !important;
+  }
+  body.print-xl .chip {
+    background: #f0f2f5 !important;
+    color: #000 !important;
+    border: 1px solid #ccc;
+    font-size: 9pt;
+  }
+  body.print-xl .xl-tbl {
+    font-size: 9.5pt !important;
+    color: #000 !important;
+    border: 1px solid #888;
+  }
+  body.print-xl .xl-tbl thead {
+    display: table-header-group;
+  }
+  body.print-xl .xl-tbl tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  body.print-xl .xl-tbl th, body.print-xl .xl-tbl td {
+    border: 1px solid #bbb !important;
+    padding: 4px 5px !important;
+    color: #000 !important;
+  }
+  body.print-xl .xl-tbl th {
+    background: #eceff4 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 </style>
@@ -208,9 +306,10 @@ tr.tot td{font-weight:700}
 
 <section id="tk" class="hide">
   <div class="card">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
       <select id="st"><option value="">Tất cả trạng thái</option></select>
       <input id="q" placeholder="Tìm nội dung, văn bản, lãnh đạo…" style="flex:1;min-width:200px">
+      <button id="exportExcel" class="btn-ok" title="Xuất danh sách công việc đang lọc ra file Excel">⬇ Xuất Excel</button>
     </div>
     <div class="sc"><table id="tasks"></table></div>
   </div>
@@ -243,9 +342,14 @@ tr.tot td{font-weight:700}
 </section>
 
 <section id="xl" class="hide">
-  <div class="card"><h3 id="xlAh"></h3><div id="xlchips"></div><div class="sc"><table id="xlA"></table></div></div>
-  <div class="card"><h3 id="xlSh"></h3><div class="sc"><table id="xlS"></table></div></div>
-  <div class="card"><h3 id="xlQh"></h3><div class="sc"><table id="xlQ"></table></div></div>
+  <div class="xl-print-head" id="xlPrintHead"></div>
+  <div class="card no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <span style="color:var(--mu);font-size:12px">Tổng hợp công việc chưa hoàn thành, sắp đến hạn và quá hạn cần cập nhật trạng thái</span>
+    <button id="xlPdf" class="btn-pr" style="margin-left:auto" title="Xuất toàn bộ danh sách cần xử lý thành 01 file PDF">⬇ Xuất PDF</button>
+  </div>
+  <div class="card"><h3 id="xlAh"></h3><div id="xlchips"></div><div class="sc"><table id="xlA" class="xl-tbl"></table></div></div>
+  <div class="card"><h3 id="xlSh"></h3><div class="sc"><table id="xlS" class="xl-tbl"></table></div></div>
+  <div class="card"><h3 id="xlQh"></h3><div class="sc"><table id="xlQ" class="xl-tbl"></table></div></div>
 </section>
 
 </main>
@@ -267,6 +371,7 @@ const el=id=>document.getElementById(id);
 const sum=a=>a.reduce((x,y)=>x+y,0);
 const pct=(a,b)=>b?(a/b*100).toFixed(1).replace(".",",")+"%":"0,0%";
 const esc=s=>String(s??"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const slug=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/gi,"d").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_|_$/g,"");
 const getCurrentWeekOfMonth=()=>{const d=new Date();return Math.min(5,Math.ceil(d.getDate()/7))};
 
 function updateStatus() {
@@ -430,14 +535,50 @@ function render(){
  updateStatus();
 }
 
-function tasks(){
+function getFilteredTasks(){
  const d=el("dept").value,m=+el("month").value,s=el("st").value,q=el("q").value.toLowerCase();
+ return ROWS.filter(x=>x.m==m&&(!d||x.d==d)&&(s===""||x.st==s)&&(!q||((x.tx||"")+(x.doc||"")+(x.lead||"")).toLowerCase().includes(q)));
+}
+
+function tasks(){
  const col=ST.map(x=>x[1]);
- const rs=ROWS.filter(x=>x.m==m&&(!d||x.d==d)&&(s===""||x.st==s)&&(!q||((x.tx||"")+(x.doc||"")+(x.lead||"")).toLowerCase().includes(q)));
+ const rs=getFilteredTasks();
  el("tasks").innerHTML=`<tr><th>Phòng ban</th><th>Tuần</th><th>Nội dung / nhiệm vụ</th><th>Văn bản / chỉ đạo</th><th>Nguồn</th><th>Lãnh đạo</th><th>Hạn</th><th>Trạng thái</th></tr>`+
  (rs.slice(0,300).map(x=>`<tr><td>${esc(x.d)}</td><td>${x.w}</td><td class="l">${esc(x.tx||"(chưa nhập nội dung)")}</td><td class="l">${esc(x.doc)}</td><td>${esc(x.src)}</td><td>${esc(x.lead)}</td><td style="text-align:center;">${esc(x.due)}</td><td style="text-align:center;"><span class="tag" style="--c:${col[x.st]}">${ST[x.st][0]}</span></td></tr>`).join("")||`<tr><td colspan="8" style="text-align:center;color:var(--mu)">Không có công việc phù hợp</td></tr>`)+
  (rs.length>300?`<tr><td colspan="8" style="text-align:center;color:var(--mu)">Hiển thị 300/${rs.length} công việc – hãy lọc thêm</td></tr>`:"");
  updateStatus();
+}
+
+function exportTasksExcel(){
+ const rs = getFilteredTasks();
+ if(!rs.length){ alert("Không có dữ liệu công việc phù hợp để xuất Excel."); return; }
+ const d = el("dept").value || "Toan_phuong";
+ const m = el("month").value;
+ const s = el("st").value;
+ const stLabel = s === "" ? "Tat_ca_trang_thai" : ST[+s][0];
+ const fileBase = `Cong_viec_${slug(d)}_T${m}_${YEAR}_${slug(stLabel)}`;
+
+ const header = ["STT","Phòng ban","Tháng","Tuần","Nội dung / nhiệm vụ","Văn bản / chỉ đạo","Nguồn","Lãnh đạo","Hạn","Trạng thái","Tiến độ / kết quả","Người thực hiện"];
+ const aoa = [header, ...rs.map((x,i)=>[
+   i+1, x.d||"", "Tháng "+x.m, "Tuần "+x.w, x.tx||"", x.doc||"", x.src||"", x.lead||"", x.due||"", ST[x.st][0], x.kq||"", x.gc||""
+ ])];
+
+ if(typeof XLSX !== "undefined"){
+   const ws = XLSX.utils.aoa_to_sheet(aoa);
+   ws["!cols"] = [
+     {wch:5},{wch:18},{wch:9},{wch:8},{wch:44},{wch:28},{wch:18},{wch:18},{wch:12},{wch:20},{wch:26},{wch:18}
+   ];
+   const wb = XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb, ws, "CongViec");
+   XLSX.writeFile(wb, fileBase + ".xlsx");
+ } else {
+   const csv = "\uFEFF" + aoa.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+   const a = document.createElement("a");
+   a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8;"}));
+   a.download = fileBase + ".csv";
+   a.click();
+   URL.revokeObjectURL(a.href);
+ }
 }
 
 async function init(){
@@ -469,6 +610,7 @@ el("dept").innerHTML='<option value="">Toàn phường (tất cả phòng)</opti
 for(let m=1;m<=12;m++)el("month").innerHTML+=`<option value="${m}">Tháng ${m}</option>`;
 ST.forEach((x,i)=>el("st").innerHTML+=`<option value="${i}">${x[0]}</option>`);
 el("dept").onchange=render;el("st").onchange=tasks;el("q").oninput=tasks;el("reload").onclick=init;
+el("exportExcel").onclick=exportTasksExcel;
 el("tabs").onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b==e.target));
  ["ov","tk","lk","rp","xl"].forEach(i=>el(i).classList.toggle("hide",i!=t));
@@ -536,18 +678,19 @@ function repW(){
 }
 
 function lst(rs,id,empty){const n=rs.length;rs=rs.slice(0,200);
- el(id).innerHTML=`<tr><th>Phòng ban</th><th>Tháng/Tuần</th><th>Nội dung</th><th>Văn bản chỉ đạo</th><th>Lãnh đạo</th><th>Hạn</th><th>Tiến độ / kết quả</th><th>Lý do chưa hoàn thành</th><th>Người thực hiện</th><th>Dòng</th></tr>`+
- (rs.map(x=>`<tr><td>${esc(x.d)}</td><td>T${x.m}/Tuần ${x.w}</td><td class="l">${esc(x.tx||"(chưa nhập nội dung)")}</td><td class="l">${esc(x.doc)}</td><td>${esc(x.lead)}</td><td>${esc(x.due)}</td><td class="l">${esc(x.kq)}</td><td class="l">${esc(x.ly)}</td><td class="l">${esc(x.gc)}</td><td>${x.r||""}</td></tr>`).join("")||`<tr><td colspan="10" style="text-align:center;color:var(--mu)">${empty}</td></tr>`)+
- (n>200?`<tr><td colspan="10" style="text-align:center;color:var(--mu)">Hiển thị 200/${n} – hãy lọc theo phòng</td></tr>`:"")}
+ el(id).innerHTML=`<thead><tr><th>Phòng ban</th><th>Tháng/Tuần</th><th>Nội dung</th><th>Văn bản chỉ đạo</th><th>Lãnh đạo</th><th>Hạn</th><th>Tiến độ / kết quả</th><th>Người thực hiện</th><th>Dòng</th></tr></thead><tbody>`+
+ (rs.map(x=>`<tr><td>${esc(x.d)}</td><td>T${x.m}/Tuần ${x.w}</td><td>${esc(x.tx||"(chưa nhập nội dung)")}</td><td>${esc(x.doc)}</td><td>${esc(x.lead)}</td><td>${esc(x.due)}</td><td>${esc(x.kq)}</td><td>${esc(x.gc)}</td><td>${x.r||""}</td></tr>`).join("")||`<tr><td colspan="9" style="text-align:center;color:var(--mu)">${empty}</td></tr>`)+
+ (n>200?`<tr><td colspan="9" style="text-align:center;color:var(--mu)">Hiển thị 200/${n} – hãy lọc theo phòng</td></tr>`:"")+"</tbody>"}
 
 function xl(){
  const d=el("dept").value,m=+el("month").value,R=ROWS.filter(x=>(!d||x.d==d)&&x.m<=m),by=(a,b)=>(+pd(a.due)||1e15)-(+pd(b.due)||1e15),lim=+TODAY+7*DAY;
  const A=R.filter(x=>x.st==2).sort(by),S=R.filter(x=>x.st==3&&pd(x.due)&&+pd(x.due)>=+TODAY&&+pd(x.due)<=lim).sort(by),Q=R.filter(x=>x.st==3&&pd(x.due)&&+pd(x.due)<+TODAY).sort(by);
+ el("xlPrintHead").innerHTML=`<h2>UBND PHƯỜNG ĐÔNG NGẠC – DANH SÁCH CÔNG VIỆC CẦN XỬ LÝ</h2><p>Đơn vị: ${esc(d||"Toàn phường")} · Luỹ kế tới tháng ${m}/${YEAR} · Ngày xuất: ${new Date().toLocaleDateString("vi-VN")}</p>`;
  el("xlAh").textContent=`Chưa hoàn thành (quá hạn chưa giải quyết) – ${A.length} nhiệm vụ`;
  el("xlchips").innerHTML=DEPTS.map(k=>[k,A.filter(x=>x.d==k).length]).filter(c=>c[1]).map(c=>`<span class="chip">${esc(c[0])}: <b>${c[1]}</b></span>`).join("");
  el("xlSh").textContent=`Đang xử lý, đến hạn trong 7 ngày tới – ${S.length} nhiệm vụ`;
  el("xlQh").textContent=`Đang xử lý nhưng đã quá ngày hạn (cần cập nhật trạng thái) – ${Q.length} nhiệm vụ`;
- lst(A,"xlA","Không có nhiệm vụ nào");lst(S,"xlS","Không có nhiệm vụ nào đến hạn trong 7 ngày tới");lst(Q,"xlQ","Không có")
+ lst(A,"xlA","Không có nhiệm vụ nào");lst(S,"xlS","Không có nhiệm vụ nào đến hạn trong 7 ngày tới");lst(Q,"xlQ","Không có");
  updateStatus();
 }
 
@@ -555,7 +698,9 @@ for(let i=1;i<=5;i++)el("week").innerHTML+=`<option value="${i}">Tuần ${i}</op
 el("week").onchange=()=>{el("week").dataset.u="1";repW()};
 el("month").onchange=()=>{el("week").dataset.u="";render()};
 el("cp").onclick=async()=>{try{await navigator.clipboard.writeText(el("rpt").innerText);el("cp").textContent="Đã sao chép ✓"}catch(e){el("cp").textContent="Không sao chép được"}setTimeout(()=>el("cp").textContent="Sao chép",1800)};
-el("pr").onclick=()=>window.print();
+el("pr").onclick=()=>{document.body.classList.remove("print-xl");window.print()};
+el("xlPdf").onclick=()=>{document.body.classList.add("print-xl");window.print()};
+window.addEventListener("afterprint",()=>document.body.classList.remove("print-xl"));
 
 init();
 </script>
