@@ -67,7 +67,6 @@ th:first-child,td:first-child{text-align:left}
 tr.tot td{font-weight:700}
 
 /* Cột Lãnh đạo không xuống dòng, Nội dung thì rộng, Hạn thì vừa phải */
-/* Thay vì chỉ width: 1%, thiết lập khoảng cách cụ thể cho các cột để cân đối */
 #tasks th:nth-child(5), #tasks td:nth-child(5) { width: 10%; } /* Nguồn */
 #tasks th:nth-child(6), #tasks td:nth-child(6) { white-space: nowrap; width: 12%; } /* Lãnh đạo */
 #tasks th:nth-child(7), #tasks td:nth-child(7) { white-space: nowrap; width: 8%; text-align: center; } /* Hạn */
@@ -86,18 +85,77 @@ tr.tot td{font-weight:700}
 .tag{padding:2px 8px;border-radius:10px;font-size:11px;color:#fff;background:var(--c);white-space:nowrap;}
 .hide{display:none !important;}
 
-.doc{background:#fff;color:#111;border:1px solid var(--bd);border-radius:10px;padding:28px 36px;font:14pt/1.5 "Times New Roman",serif;max-width:860px;margin:auto}
+.doc{background:#fff;color:#111;border:1px solid var(--bd);border-radius:10px;padding:28px 36px;font:14pt/1.5 "Times New Roman",Times,serif;max-width:860px;margin:auto}
 .doc h4{text-align:center;margin:14px 0 4px;font-size:14pt;font-weight:bold;}
-.doc .hd{display:flex;justify-content:space-between;text-align:center;font-size:13pt;gap:12px}
+.doc .hd{display:flex;justify-content:space-between;align-items:flex-start;text-align:center;font-size:12.5pt;gap:12px}
 .doc p{margin:6px 0; text-align:justify;}
 .doc .ind{margin-left:22px}
 .doc .ind2{margin-left:44px;font-size:14pt;color:#333}
-.doc .sg{display:flex;justify-content:space-between;margin-top:18px;font-size:14pt}
+.doc .sg{display:flex;justify-content:space-between;margin-top:24px;font-size:13pt}
+.doc .dept-blk{page-break-inside:avoid;break-inside:avoid;margin-bottom:4px}
 .chip{display:inline-block;padding:2px 10px;border-radius:12px;background:var(--bg);margin:0 6px 6px 0;font-size:12px}
 .status-bar {margin-bottom:15px; padding:8px 15px; background-color:#fff3e0; border-left:4px solid #ff9800; border-radius:4px; font-size:13px; color:#333; display:flex; align-items:center;}
 .status-bar span.dot {color:#ff9800; font-size:16px; margin-right:8px; line-height:1;}
 .chart-container { position: relative; height: 300px; width: 100%; }
-@media print{body *{visibility:hidden}#rpt,#rpt *{visibility:visible;display:block !important;}#rpt{position:absolute;left:0;top:0;width:100%;border:0}}
+
+/* Chuẩn hoá định dạng in A4 theo Nghị định 30/2020/NĐ-CP */
+@page {
+  size: A4 portrait;
+  margin: 20mm 15mm 20mm 30mm;
+}
+@media print {
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  header, .bar, #loadingOverlay, #msg, #statusBar,
+  main > section:not(#rp),
+  #rp > .card {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    position: static !important;
+  }
+  #rp {
+    display: block !important;
+  }
+  #rpt {
+    display: block !important;
+    position: static !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 13.5pt !important;
+    line-height: 1.45 !important;
+  }
+  #rpt .hd, #rpt .sg {
+    display: flex !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  #rpt .dept-blk {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  #rpt p {
+    orphans: 3;
+    widows: 3;
+  }
+}
 </style>
 </head>
 <body>
@@ -195,8 +253,6 @@ tr.tot td{font-weight:700}
 <script>
 const SHEET_ID="1RvTSYb_6jv9vCVjSKv_NrQ3eBeX0cwpVy76eZhPeqlY";
 let BAD=null;
-// Cập nhật cơ chế fetch dữ liệu để tối ưu tốc độ: bỏ qua bước đọc bằng Apps Script (vốn thường bị sleep/timeout) 
-// và trực tiếp đọc file CSV của Google Sheet, giúp tốc độ tải luôn < 1 giây thay vì > 5 giây.
 const API_URL=""; 
 
 const TABS=[["VP HĐND-UBND","1. VP HĐND-UBND"],["Phòng Kinh tế","2. Phòng Kinh tế"],["Phòng HT-ĐT-MT","3. Phòng HT-ĐT-MT"],["Phòng VH-XH","4. Phòng VH-XH"],["Phòng Nội Vụ","5. Phòng Nội Vụ"],["Ban CHQS","6. Ban CHQS"],["CAP","7. CAP"],["Trạm Y Tế","8. Trạm Y Tế"],["Ban QL dự án","9. Ban QL dự án"],["TT VHTT&TT","10. TT VHTT&TT"]];
@@ -255,7 +311,6 @@ function rowsFromCSV(dept,csv){const out=[];
 async function loadLive(){
  if(API_URL){try{const j=await (await fetch(API_URL)).json();BAD=j.bad||null;return{all:j.rows||[],fails:[]}}catch(e){console.warn("API lỗi, chuyển sang đọc CSV");}}
  const fails=[];let all=[];
- // Tối ưu hoá tải đồng thời 10 files CSV cùng lúc thay vì đợi tuần tự
  await Promise.all(TABS.map(async([name,tab])=>{
   try{const u=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=0&sheet=${encodeURIComponent(tab)}`;
    const res=await fetch(u);if(!res.ok)throw 0;const rows=rowsFromCSV(name,await res.text());
@@ -322,7 +377,6 @@ function renderCharts(m, d) {
       return sum(y);
   });
   
-  // Highlight bar màu cam cho phòng ban được chọn
   const backgroundColors = DEPTS.map(k => (k === d) ? '#e08a00' : '#6f9bf0');
 
   if(deptChartInst) deptChartInst.destroy();
@@ -387,7 +441,7 @@ async function init(){
  const{all,fails}=await loadLive();
  if(all.length){ROWS=all;live=true;
   if(fails.length) {
-     el("msg").className="note hide"; // Ẩn hoàn toàn thẻ đọc data theo yêu cầu
+     el("msg").className="note hide";
   }
  }
  else{ROWS=demo();live=false;
@@ -402,7 +456,7 @@ async function init(){
  
  setTimeout(() => {
      el("loadingOverlay").style.display = "none";
- }, 200); // Ẩn màn hình loading ngay khi render xong bảng
+ }, 200);
 }
 
 el("dept").innerHTML='<option value="">Toàn phường (tất cả phòng)</option>'+DEPTS.map(d=>`<option>${d}</option>`).join("");
@@ -436,37 +490,37 @@ function repW(){
  if(full.length)nx.push(`Đơn vị hoàn thành 100% nhiệm vụ: ${full.join(", ")}.`);
   
   el("rpt").innerHTML=`
-  <div class="hd" style="align-items:flex-start;">
-    <div style="width: 40%; text-align: center;">
-      <span style="font-size: 13pt;">UBND PHƯỜNG ĐÔNG NGẠC</span><br>
-      <strong style="font-size: 13pt; text-decoration: underline;">VĂN PHÒNG HĐND - UBND</strong><br>
-      <span style="font-size: 13pt;">Số: &nbsp;&nbsp;&nbsp;/BC-UBND</span>
+  <div class="hd">
+    <div style="width: 42%; text-align: center;">
+      <span style="font-size: 12pt;">UBND PHƯỜNG ĐÔNG NGẠC</span><br>
+      <strong style="font-size: 12pt; border-bottom: 1px solid #000; padding-bottom: 2px;">VĂN PHÒNG HĐND - UBND</strong><br>
+      <span style="font-size: 12.5pt; display: inline-block; margin-top: 6px;">Số: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/BC-VP</span>
     </div>
-    <div style="width: 60%; text-align: center;">
-      <strong style="font-size: 13pt;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
-      <strong style="font-size: 14pt; text-decoration: underline;">Độc lập - Tự do - Hạnh phúc</strong><br>
-      <i style="font-size: 13pt;">Đông Ngạc, ngày ${TODAY.getDate()} tháng ${TODAY.getMonth()+1} năm ${TODAY.getFullYear()}</i>
+    <div style="width: 58%; text-align: center;">
+      <strong style="font-size: 12pt; white-space: nowrap;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
+      <strong style="font-size: 13pt; border-bottom: 1px solid #000; padding-bottom: 2px; white-space: nowrap;">Độc lập - Tự do - Hạnh phúc</strong><br>
+      <i style="font-size: 12.5pt; display: inline-block; margin-top: 6px;">Đông Ngạc, ngày ${TODAY.getDate()} tháng ${TODAY.getMonth()+1} năm ${TODAY.getFullYear()}</i>
     </div>
   </div>
   
-  <h4 style="font-size:14pt; margin: 25px 0 10px;">BÁO CÁO</h4>
-  <p style="text-align:center; font-weight:bold; font-size:14pt; margin-top:0;">Tiến độ thực hiện nhiệm vụ được giao của các phòng chuyên môn, đơn vị thuộc UBND Phường tới tuần ${w}, tháng ${m}/${YEAR}</p>
+  <h4 style="font-size:14pt; margin: 22px 0 6px;">BÁO CÁO</h4>
+  <p style="text-align:center; font-weight:bold; font-size:13.5pt; margin-top:0; margin-bottom:14px;">Tiến độ thực hiện nhiệm vụ được giao của các phòng chuyên môn, đơn vị thuộc UBND Phường tới tuần ${w}, tháng ${m}/${YEAR}</p>
   
-  <p>Thực hiện chỉ đạo của Chủ tịch UBND Phường tại các kết luận cuộc họp và văn bản chỉ đạo của các Sở, Ban, Ngành chuyển đến UBND Phường, Văn phòng HĐND-UBND Phường báo cáo tiến độ thực hiện như sau:</p>
+  <p style="text-indent: 28px;">Thực hiện chỉ đạo của Chủ tịch UBND Phường tại các kết luận cuộc họp và văn bản chỉ đạo của các Sở, Ban, Ngành chuyển đến UBND Phường, Văn phòng HĐND-UBND Phường báo cáo tiến độ thực hiện như sau:</p>
   <p><b>I. Kết quả thực hiện nhiệm vụ của các phòng chuyên môn, đơn vị</b></p>
   <p><b>1. Kết quả chung của toàn phường:</b></p>
   <p class="ind">- Nhiệm vụ phải thực hiện tới tuần ${w}, tháng ${m}/${YEAR} (gồm ${T.n} nhiệm vụ trong tháng và ${T.o} nhiệm vụ tồn đọng của các tháng trước). Tổng ${T.t} nhiệm vụ. Cụ thể:</p>${L(T)}
   <p><b>2. Kết quả thực hiện của từng phòng chuyên môn, đơn vị:</b></p>
-  ${act.map((c,i)=>`<p>${i+1}. <b>${esc(c.d)}</b> tới tuần ${w}/tháng ${m}: ${c.n} nhiệm vụ; ${c.o} nhiệm vụ tồn đọng của các tháng trước. Tổng cộng: ${c.t} nhiệm vụ. Trong đó:</p>${L(c)}`).join("")||"<p>Chưa có dữ liệu.</p>"}
+  ${act.map((c,i)=>`<div class="dept-blk"><p>${i+1}. <b>${esc(c.d)}</b> tới tuần ${w}/tháng ${m}: ${c.n} nhiệm vụ; ${c.o} nhiệm vụ tồn đọng của các tháng trước. Tổng cộng: ${c.t} nhiệm vụ. Trong đó:</p>${L(c)}</div>`).join("")||"<p>Chưa có dữ liệu.</p>"}
   ${C.filter(c=>!c.t).length?`<p class="ind">Không phát sinh nhiệm vụ: ${C.filter(c=>!c.t).map(c=>esc(c.d)).join(", ")}.</p>`:""}
   <p><b>II. Nhận xét</b></p>${nx.map(s=>`<p class="ind">- ${s}</p>`).join("")}
   
-  <div class="sg" style="display:flex; justify-content:space-between; margin-top:30px;">
-    <div style="width:50%; font-size:11pt; font-style:italic; line-height:1.3; text-align:left;">
-      <b>Nơi nhận:</b><br>- TT Đảng uỷ phường (để b/c);<br>- Đ/c Chủ tịch, các PCT UBND Phường;<br>- Các phòng chuyên môn, đơn vị;<br>- Lưu: VT.
+  <div class="sg">
+    <div style="width:52%; font-size:11pt; font-style:italic; line-height:1.35; text-align:left;">
+      <b style="font-size:12pt;">Nơi nhận:</b><br>- TT Đảng uỷ phường (để b/c);<br>- Đ/c Chủ tịch, các PCT UBND Phường;<br>- Các phòng chuyên môn, đơn vị;<br>- Lưu: VT.
     </div>
-    <div style="width:50%; text-align:center; font-size:13pt;">
-      <b>CHÁNH VĂN PHÒNG</b><br><br><br><br><br><b>(Đã ký)</b>
+    <div style="width:48%; text-align:center; font-size:13pt;">
+      <b>CHÁNH VĂN PHÒNG</b><br><br><br><br><br>
     </div>
   </div>`;
  updateStatus();
