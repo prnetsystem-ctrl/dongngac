@@ -22,6 +22,8 @@ button{cursor:pointer}
 .btn-ok:hover{filter:brightness(1.06)}
 .btn-pr{background:var(--pr);color:#fff;border-color:var(--pr);font-weight:600}
 .btn-pr:hover{filter:brightness(1.08)}
+.btn-or{background:var(--late);color:#fff;border-color:var(--late);font-weight:600}
+.btn-or:hover{filter:brightness(1.06)}
 .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
 .tabs button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 
@@ -78,19 +80,19 @@ tr.tot td{font-weight:700}
 #tasks th:nth-child(8), #tasks td:nth-child(8) { width: 10%; text-align: center; } /* Trạng thái */
 #tasks td.l{text-align:left; min-width:150px; max-width:400px; width: auto;}
 
-/* Căn chỉnh bảng cân đối trong tab Cần xử lý (9 cột) */
-.xl-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
-.xl-tbl th, .xl-tbl td { padding: 8px 8px; border-bottom: 1px solid var(--bd); vertical-align: top; line-height: 1.45; overflow-wrap: break-word; word-break: break-word; }
+/* Căn chỉnh bảng cân đối trong tab Cần xử lý (9 cột) - tăng rộng Lãnh đạo & Hạn, chống chèn chữ */
+.xl-tbl { width: 100%; min-width: 1080px; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+.xl-tbl th, .xl-tbl td { padding: 8px 8px; border-bottom: 1px solid var(--bd); vertical-align: top; line-height: 1.45; white-space: normal; overflow-wrap: break-word; word-wrap: break-word; }
 .xl-tbl th { background: var(--bg); color: var(--mu); font-weight: 600; vertical-align: middle; }
-.xl-tbl th:nth-child(1), .xl-tbl td:nth-child(1) { width: 11%; text-align: left; }
-.xl-tbl th:nth-child(2), .xl-tbl td:nth-child(2) { width: 8%; text-align: center; white-space: nowrap; }
-.xl-tbl th:nth-child(3), .xl-tbl td:nth-child(3) { width: 26%; text-align: left; }
-.xl-tbl th:nth-child(4), .xl-tbl td:nth-child(4) { width: 15%; text-align: left; }
-.xl-tbl th:nth-child(5), .xl-tbl td:nth-child(5) { width: 10%; text-align: left; white-space: nowrap; }
-.xl-tbl th:nth-child(6), .xl-tbl td:nth-child(6) { width: 8%; text-align: center; white-space: nowrap; }
+.xl-tbl th:nth-child(1), .xl-tbl td:nth-child(1) { width: 10%; text-align: left; }
+.xl-tbl th:nth-child(2), .xl-tbl td:nth-child(2) { width: 8%; text-align: center; }
+.xl-tbl th:nth-child(3), .xl-tbl td:nth-child(3) { width: 22%; text-align: left; }
+.xl-tbl th:nth-child(4), .xl-tbl td:nth-child(4) { width: 13%; text-align: left; }
+.xl-tbl th:nth-child(5), .xl-tbl td:nth-child(5) { width: 14%; text-align: left; }
+.xl-tbl th:nth-child(6), .xl-tbl td:nth-child(6) { width: 10%; text-align: center; }
 .xl-tbl th:nth-child(7), .xl-tbl td:nth-child(7) { width: 11%; text-align: left; }
-.xl-tbl th:nth-child(8), .xl-tbl td:nth-child(8) { width: 7%; text-align: left; }
-.xl-tbl th:nth-child(9), .xl-tbl td:nth-child(9) { width: 4%; text-align: center; white-space: nowrap; }
+.xl-tbl th:nth-child(8), .xl-tbl td:nth-child(8) { width: 8%; text-align: left; }
+.xl-tbl th:nth-child(9), .xl-tbl td:nth-child(9) { width: 4%; text-align: center; }
 .xl-print-head { display: none; }
 
 .chart{display:flex;gap:12px;align-items:flex-end;height:170px;padding-top:8px}
@@ -232,6 +234,8 @@ tr.tot td{font-weight:700}
     font-size: 9pt;
   }
   body.print-xl .xl-tbl {
+    min-width: 0 !important;
+    width: 100% !important;
     font-size: 9.5pt !important;
     color: #000 !important;
     border: 1px solid #888;
@@ -345,7 +349,7 @@ tr.tot td{font-weight:700}
   <div class="xl-print-head" id="xlPrintHead"></div>
   <div class="card no-print" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <span style="color:var(--mu);font-size:12px">Tổng hợp công việc chưa hoàn thành, sắp đến hạn và quá hạn cần cập nhật trạng thái</span>
-    <button id="xlPdf" class="btn-pr" style="margin-left:auto" title="Xuất toàn bộ danh sách cần xử lý thành 01 file PDF">⬇ Xuất PDF</button>
+    <button id="xlPdf" class="btn-or" style="margin-left:auto" title="Xuất toàn bộ danh sách cần xử lý thành 01 file PDF">⬇ Xuất PDF</button>
   </div>
   <div class="card"><h3 id="xlAh"></h3><div id="xlchips"></div><div class="sc"><table id="xlA" class="xl-tbl"></table></div></div>
   <div class="card"><h3 id="xlSh"></h3><div class="sc"><table id="xlS" class="xl-tbl"></table></div></div>
