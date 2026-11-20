@@ -269,7 +269,7 @@ tr.tot td{font-weight:700}
 <div class="bar">
   <label>Phòng ban <select id="dept"></select></label>
   <label>Tháng <select id="month"></select></label>
-  <button id="reload" title="Tải lại dữ liệu từ Sheet">↻ Tải lại</button>
+  <button id="reload" title="Tải lại dữ liệu mới nhất từ Sheet">↻ Tải lại</button>
   <div class="tabs" id="tabs">
     <button data-t="ov" class="on">Tổng quan</button>
     <button data-t="tk">Công việc được giao</button>
@@ -361,7 +361,10 @@ tr.tot td{font-weight:700}
 <script>
 const SHEET_ID="1RvTSYb_6jv9vCVjSKv_NrQ3eBeX0cwpVy76eZhPeqlY";
 let BAD=null;
-const API_URL=""; 
+/* Địa chỉ Web App Apps Script (đọc đủ dữ liệu kể cả khi bật bộ lọc trên Sheet + có CacheService 5 phút) */
+const API_URL="https://script.google.com/macros/s/AKfycbx2znqxcdguovjDAg8OLYjdO7lCNXbOqFjTOq8JnCzEQPfzfr88DEDZbb1MBDQePoneqg/exec";
+const LOCAL_CACHE_KEY="dongngac_cache_v1";
+const LOCAL_CACHE_TTL=10*60*1000; // 10 phút bộ nhớ đệm trình duyệt để mở lại tức thì
 
 const TABS=[["VP HĐND-UBND","1. VP HĐND-UBND"],["Phòng Kinh tế","2. Phòng Kinh tế"],["Phòng HT-ĐT-MT","3. Phòng HT-ĐT-MT"],["Phòng VH-XH","4. Phòng VH-XH"],["Phòng Nội Vụ","5. Phòng Nội Vụ"],["Ban CHQS","6. Ban CHQS"],["CAP","7. CAP"],["Trạm Y Tế","8. Trạm Y Tế"],["Ban QL dự án","9. Ban QL dự án"],["TT VHTT&TT","10. TT VHTT&TT"]];
 const C={st:1,mo:4,wk:5,tx:6,doc:7,src:8,flow:9,lead:11,due:12};
@@ -369,7 +372,7 @@ const ST=[["Hoàn thành","var(--ok)"],["Hoàn thành quá hạn","var(--late)"]
 const SRC=["Sở, ban, ngành","Thành phố","Thành uỷ","Trung ương","Đảng uỷ","Các đơn vị khác"];
 const FLOW=[["CV","Công văn"],["XLVB","Phiếu XLVB"],["TKL","Theo kết luận"],["CTCT","CT công tác"]];
 const DEPTS=TABS.map(t=>t[0]);
-let ROWS=[],DATA={},live=false;
+let ROWS=[],DATA={},live=false,initialized=false;
 
 const el=id=>document.getElementById(id);
 const sum=a=>a.reduce((x,y)=>x+y,0);
@@ -421,8 +424,34 @@ function rowsFromCSV(dept,csv){const out=[];
   out.push({r:i+1,d:dept,m:+m[1],w,st,tx:r[C.tx],doc:r[C.doc],src:normSrc(r[C.src]),fl:normFlow(r[C.flow]),lead:r[C.lead],due:r[C.due],kq:r[14],nh:r[15],ly:r[16],gc:r[17]})});
  return out}
 
-async function loadLive(){
- if(API_URL){try{const j=await (await fetch(API_URL)).json();BAD=j.bad||null;return{all:j.rows||[],fails:[]}}catch(e){console.warn("API lỗi, chuyển sang đọc CSV");}}
+function readLocalCache(){
+ try{
+  const raw=localStorage.getItem(LOCAL_CACHE_KEY);
+  if(!raw)return null;
+  const obj=JSON.parse(raw);
+  if(!obj||!Array.isArray(obj.rows)||!obj.rows.length)return null;
+  if(Date.now()-(obj.ts||0)>LOCAL_CACHE_TTL)return null;
+  return obj.rows;
+ }catch(e){return null}
+}
+function saveLocalCache(rows){
+ try{localStorage.setItem(LOCAL_CACHE_KEY,JSON.stringify({ts:Date.now(),rows}))}catch(e){}
+}
+
+async function loadLive(forceRefresh=false){
+ if(API_URL){
+  try{
+   const url=forceRefresh?(API_URL+(API_URL.includes("?")?"&":"?")+"refresh=1"):API_URL;
+   const res=await fetch(url);
+   if(!res.ok)throw new Error("HTTP "+res.status);
+   const j=await res.json();
+   BAD=j.bad||null;
+   if(Array.isArray(j.rows)&&j.rows.length){
+    saveLocalCache(j.rows);
+    return{all:j.rows,fails:j.fails||[]};
+   }
+  }catch(e){console.warn("API lỗi, chuyển sang đọc CSV:",e);}
+ }
  const fails=[];let all=[];
  await Promise.all(TABS.map(async([name,tab])=>{
   try{const u=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=0&sheet=${encodeURIComponent(tab)}`;
@@ -585,35 +614,58 @@ function exportTasksExcel(){
  }
 }
 
-async function init(){
+function applyDefaultsIfFirst(){
+ if(initialized)return;
+ initialized=true;
+ const currentMonth = new Date().getMonth() + 1;
+ el("month").value = currentMonth;
+ el("week").dataset.u = "";
+ el("week").value = getCurrentWeekOfMonth();
+}
+
+async function init(forceRefresh=false){
+ const cached = forceRefresh ? null : readLocalCache();
+ if(cached){
+   ROWS = cached;
+   live = true;
+   el("msg").className = "note hide";
+   build();
+   applyDefaultsIfFirst();
+   render();
+   el("loadingOverlay").style.display = "none";
+   // Cập nhật ngầm dữ liệu mới từ Apps Script để luôn đồng bộ
+   loadLive(false).then(({all})=>{
+     if(all.length){
+       ROWS = all;
+       build();
+       render();
+     }
+   });
+   return;
+ }
+
  el("loadingOverlay").style.display = "flex";
- const{all,fails}=await loadLive();
+ const{all,fails}=await loadLive(forceRefresh);
  if(all.length){ROWS=all;live=true;
-  if(fails.length) {
-     el("msg").className="note hide";
-  }
+  el("msg").className="note hide";
  }
  else{ROWS=demo();live=false;
   el("msg").className="note";
   el("msg").textContent="Không đọc được Google Sheet (cần chia sẻ công khai và mở trang qua http/https). Đang hiển thị DỮ LIỆU MẪU để minh hoạ.";
  }
  build();
- 
- const currentMonth = new Date().getMonth() + 1;
- el("month").value = currentMonth;
- el("week").dataset.u = "";
- el("week").value = getCurrentWeekOfMonth();
+ applyDefaultsIfFirst();
  render();
  
  setTimeout(() => {
      el("loadingOverlay").style.display = "none";
- }, 200);
+ }, 150);
 }
 
 el("dept").innerHTML='<option value="">Toàn phường (tất cả phòng)</option>'+DEPTS.map(d=>`<option>${d}</option>`).join("");
 for(let m=1;m<=12;m++)el("month").innerHTML+=`<option value="${m}">Tháng ${m}</option>`;
 ST.forEach((x,i)=>el("st").innerHTML+=`<option value="${i}">${x[0]}</option>`);
-el("dept").onchange=render;el("st").onchange=tasks;el("q").oninput=tasks;el("reload").onclick=init;
+el("dept").onchange=render;el("st").onchange=tasks;el("q").oninput=tasks;el("reload").onclick=()=>init(true);
 el("exportExcel").onclick=exportTasksExcel;
 el("tabs").onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b==e.target));
@@ -706,7 +758,7 @@ el("pr").onclick=()=>{document.body.classList.remove("print-xl");window.print()}
 el("xlPdf").onclick=()=>{document.body.classList.add("print-xl");window.print()};
 window.addEventListener("afterprint",()=>document.body.classList.remove("print-xl"));
 
-init();
+init(false);
 </script>
 </body>
 </html>
