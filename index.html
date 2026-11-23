@@ -10,7 +10,8 @@
 :root{--bg:#f4f6fa;--card:#fff;--tx:#1d2433;--mu:#667085;--bd:#e3e8ef;--pr:#1e4fa3;--ok:#2e9e5b;--late:#e08a00;--nd:#d6453d;--pe:#7a8599}
 @media (prefers-color-scheme:dark){:root{--bg:#12161f;--card:#1b2130;--tx:#e8ecf4;--mu:#97a1b5;--bd:#2c3446;--pr:#6f9bf0}}
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.45 system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+body{margin:0;font:14px/1.45 system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
+input,textarea,select{-webkit-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}
 header{background:#1e4fa3;color:#fff;padding:14px 20px}
 header h1{margin:0;font-size:18px}header p{margin:2px 0 0;opacity:.85;font-size:12px}
 
@@ -55,6 +56,23 @@ main{padding:16px 20px;max-width:1240px;margin:auto; position: relative; min-hei
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 #loadingOverlay h2 { color: #0d47a1; margin: 0 0 10px; font-size: 18px; font-weight: 600; }
 #loadingOverlay p { color: #667085; margin: 0; font-size: 14px; }
+
+/* Màn hình chặn khi phát hiện mở DevTools / kiểm tra mã nguồn */
+#devBlock {
+    position: fixed;
+    inset: 0;
+    background: rgba(18, 22, 31, 0.97);
+    color: #fff;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    text-align: center;
+    padding: 24px;
+}
+#devBlock h2 { margin: 0 0 10px; font-size: 20px; color: #ffb74d; }
+#devBlock p { margin: 0; font-size: 14px; opacity: .9; max-width: 480px; }
 
 /* Thông báo lỗi nếu có */
 .note{border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:14px;background:#fff7e0;color:#6b5200;border:1px solid #f1dc9a}
@@ -137,7 +155,7 @@ tr.tot td{font-weight:700}
     padding: 0 !important;
     width: 100% !important;
   }
-  header, .bar, #loadingOverlay, #msg, #statusBar, .no-print {
+  header, .bar, #loadingOverlay, #devBlock, #msg, #statusBar, .no-print {
     display: none !important;
   }
   main {
@@ -262,6 +280,11 @@ tr.tot td{font-weight:700}
 </head>
 <body>
 
+<div id="devBlock">
+  <h2>⛔ Không được phép kiểm tra hoặc sao chép mã nguồn</h2>
+  <p>Vui lòng đóng công cụ dành cho nhà phát triển (DevTools) để tiếp tục sử dụng hệ thống.</p>
+</div>
+
 <header>
     <h1>Sổ theo dõi tiến độ công việc – UBND Phường Đông Ngạc 2026</h1>
     <p>Dữ liệu được lấy trực tiếp từ Sổ theo dõi tiến độ công việc của UBND Phường Đông Ngạc năm 2026</p>
@@ -359,6 +382,44 @@ tr.tot td{font-weight:700}
 </main>
 
 <script>
+/* ===== Bảo vệ chống sao chép & kiểm tra mã nguồn ===== */
+(function(){
+  const isEditable = t => t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+
+  // Chặn chuột phải, kéo thả, bôi đen, copy/cut ngoài ô nhập liệu
+  document.addEventListener("contextmenu", e => e.preventDefault());
+  document.addEventListener("dragstart", e => e.preventDefault());
+  document.addEventListener("selectstart", e => { if (!isEditable(e.target)) e.preventDefault(); });
+  document.addEventListener("copy", e => { if (!isEditable(e.target)) e.preventDefault(); });
+  document.addEventListener("cut", e => { if (!isEditable(e.target)) e.preventDefault(); });
+
+  // Chặn phím tắt xem mã nguồn / DevTools / lưu trang / sao chép
+  document.addEventListener("keydown", e => {
+    const k = (e.key || "").toLowerCase();
+    const ctrl = e.ctrlKey || e.metaKey;
+    const sh = e.shiftKey;
+    const alt = e.altKey;
+
+    if (k === "f12" || e.keyCode === 123) { e.preventDefault(); return false; }
+    if (ctrl && sh && (k === "i" || k === "j" || k === "c" || k === "k")) { e.preventDefault(); return false; }
+    if (ctrl && alt && (k === "i" || k === "j" || k === "c" || k === "u")) { e.preventDefault(); return false; }
+    if (ctrl && (k === "u" || k === "s")) { e.preventDefault(); return false; }
+    if (ctrl && (k === "c" || k === "x" || k === "a") && !isEditable(e.target)) { e.preventDefault(); return false; }
+  }, true);
+
+  // Phát hiện mở DevTools (chỉ kích hoạt khi DevTools thực sự đang mở, không ảnh hưởng người dùng thường)
+  setInterval(() => {
+    const t0 = performance.now();
+    (function(){}).constructor("debugger")();
+    const open = (performance.now() - t0) > 120;
+    const blk = document.getElementById("devBlock");
+    if (blk) blk.style.display = open ? "flex" : "none";
+    if (open && typeof console !== "undefined" && console.clear) {
+      try { console.clear(); } catch(err) {}
+    }
+  }, 1500);
+})();
+
 const SHEET_ID="1RvTSYb_6jv9vCVjSKv_NrQ3eBeX0cwpVy76eZhPeqlY";
 let BAD=null;
 /* Địa chỉ Web App Apps Script (đọc đủ dữ liệu kể cả khi bật bộ lọc trên Sheet + có CacheService 5 phút) */
